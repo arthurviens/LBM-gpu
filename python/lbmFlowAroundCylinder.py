@@ -19,11 +19,60 @@
 #
 
 import numpy as np
+from numpy import format_float_scientific as fs
 import matplotlib.pyplot as plt
 from matplotlib import cm
+import time
+
+
+class Timer():
+    def __init__(self, name):
+        self.name = name
+        self.measures = []
+
+    def getName(self):
+        return self.name
+
+    def getMeasures(self):
+        return self.measures
+
+    def start(self):
+        self.start = time.time()
+
+    def end(self):
+        self.end = time.time()
+        self.measures.append(self.end - self.start)
+        del self.start 
+        del self.end
+
+class TimersManager():
+    def __init__(self):
+        self.timers = []
+
+    def add(self, name):
+        self.timers.append(Timer(name))
+
+    def get(self, name):
+        for t in self.timers:
+            if t.getName() == name:
+                return t
+
+    def printInfo(self):
+        for t in self.timers:
+            name = t.getName()
+            measures = t.getMeasures()
+            print(f"--> Timer '{name:12}' : N = {len(measures):4} | Mean "\
+                f"{fs(np.mean(measures), precision=3)} +- {fs(np.std(measures), precision=3)}")
+
+timers = TimersManager()
+timers.add("main")
+timers.add("equilibrium")
+timers.add("kernel1")
+timers.add("kernel2")
+timers.add("macroscopic")
 
 ###### Flow definition #################################################
-maxIter = 2000      # Total number of time iterations.
+maxIter = 100    # Total number of time iterations.
 Re = 150.0          # Reynolds number.
 nx, ny = 420, 180   # Numer of lattice nodes.
 ly = ny-1           # Height of the domain in lattice units.
@@ -31,6 +80,8 @@ cx, cy, r = nx//4, ny//2, ny//9 # Coordinates of the cylinder.
 uLB     = 0.04                  # Velocity in lattice units.
 nulb    = uLB*r/Re;             # Viscoscity in lattice units.
 omega = 1 / (3*nulb+0.5);    # Relaxation parameter.
+save_figures = False
+profile = True
 
 ###### Lattice Constants ###############################################
 v = np.array([ [ 1,  1], [ 1,  0], [ 1, -1], [ 0,  1], [ 0,  0],
@@ -60,24 +111,28 @@ def macroscopic(fin):
     fluid density is 0th moment of distribution functions 
     fluid velocity components are 1st order moments of dist. functions
     """
+    timers.get("macroscopic").start()
     rho = np.sum(fin, axis=0)
     u = np.zeros((2, nx, ny))
     for i in range(9):
         u[0,:,:] += v[i,0] * fin[i,:,:]
         u[1,:,:] += v[i,1] * fin[i,:,:]
     u /= rho
+    timers.get("macroscopic").end()
     return rho, u
 
 def equilibrium(rho, u):
     """Equilibrium distribution function.
     """
+    timers.get("equilibrium").start()
     usqr = 3/2 * (u[0]**2 + u[1]**2)
     feq = np.zeros((9,nx,ny))
     for i in range(9):
         cu = 3 * (v[i,0]*u[0,:,:] + v[i,1]*u[1,:,:])
         feq[i,:,:] = rho*t[i] * (1 + cu + 0.5*cu**2 - usqr) 
         # feq[i,:,:] : dimension 1 la direction de déplacement de la particule
-        #               dimension 2 et 3 : x et y la position 
+        #               dimension 2 et 3 : x et y la position
+    timers.get("equilibrium").end()
     return feq
 
 #
@@ -127,7 +182,9 @@ def main():
         fin[[0,1,2],0,:] = feq[[0,1,2],0,:] + fin[[8,7,6],0,:] - feq[[8,7,6],0,:]
 
         # Collision step.
+        timers.get("kernel1").start()
         fout = fin - omega * (fin - feq) # Noyau de calcul 1
+        timers.get("kernel1").end()
 
         # Bounce-back condition for obstacle.
         # in python language, we "slice" fout by obstacle
@@ -135,17 +192,22 @@ def main():
             fout[i, obstacle] = fin[8-i, obstacle]
 
         # Streaming step.
+        timers.get("kernel2").start()
         for i in range(9):
             fin[i,:,:] = np.roll(np.roll(fout[i,:,:], v[i,0], axis=0),
                                  v[i,1], axis=1 ) # Noyau de calcul 2
+        timers.get("kernel2").end()
 
         # Visualization of the velocity.
-        if (time%100==0):
+        if ((time%100==0) and save_figures):
             plt.clf()
             plt.imshow(np.sqrt(u[0]**2+u[1]**2).transpose(), cmap=cm.Reds)
             plt.savefig("figures/vel.{0:04d}.png".format(time//100))
 
 if __name__ == "__main__":
     # execute only if run as a script
+    timers.get("main").start()
     main()
-
+    timers.get("main").end()
+    
+    timers.printInfo()
