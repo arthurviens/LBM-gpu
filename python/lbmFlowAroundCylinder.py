@@ -60,10 +60,13 @@ class TimersManager():
     def printInfo(self):
         main = self.get("main")
         main_m = np.sum(main.getMeasures())
+        not_computed = main_m
                 
         for t in self.timers:
             name = t.getName()
             measures = t.getMeasures()
+            if name != "main":
+                not_computed -= np.sum(measures)
             if len(measures) > 0:
                 percent = np.round((np.sum(measures) / main_m)*100, 2)
                 print(f"--> Timer '{name:12}' : N = {len(measures):4} | Mean "\
@@ -71,6 +74,8 @@ class TimersManager():
                     f" | {percent:5}% of total time.")
             else:
                 print(f"--> Timer '{name:12}' : N = {len(measures):4}")
+        r = np.round((not_computed/main_m)*100, 2)
+        print(f"--> Remaining {fs(np.mean(not_computed), precision=3):9}s not monitored represent {r:5}% of total time")
 
 timers = TimersManager()
 timers.add("main")
