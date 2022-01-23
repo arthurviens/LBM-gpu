@@ -58,11 +58,19 @@ class TimersManager():
                 return t
 
     def printInfo(self):
+        main = self.get("main")
+        main_m = np.sum(main.getMeasures())
+                
         for t in self.timers:
             name = t.getName()
             measures = t.getMeasures()
-            print(f"--> Timer '{name:12}' : N = {len(measures):4} | Mean "\
-                f"{fs(np.mean(measures), precision=3)} +- {fs(np.std(measures), precision=3)}")
+            if len(measures) > 0:
+                percent = np.round((np.sum(measures) / main_m)*100, 2)
+                print(f"--> Timer '{name:12}' : N = {len(measures):4} | Mean "\
+                    f"{fs(np.mean(measures), precision=3):9} +- {fs(np.std(measures), precision=3):9} "\
+                    f" | {percent:5}% of total time.")
+            else:
+                print(f"--> Timer '{name:12}' : N = {len(measures):4}")
 
 timers = TimersManager()
 timers.add("main")
