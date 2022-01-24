@@ -69,7 +69,7 @@ class TimersManager():
                 not_computed -= np.sum(measures)
             if len(measures) > 0:
                 percent = np.round((np.sum(measures) / main_m)*100, 2)
-                print(f"--> Timer '{name:12}' : N = {len(measures):4} | Mean "\
+                print(f"--> Timer '{name:13}' : N = {len(measures):4} | Mean "\
                     f"{fs(np.mean(measures), precision=3):9} +- {fs(np.std(measures), precision=3):9} "\
                     f" | {percent:5}% of total time.")
             else:
