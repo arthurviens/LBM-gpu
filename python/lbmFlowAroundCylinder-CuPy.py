@@ -19,6 +19,7 @@
 #
 
 import numpy as np
+import cupy as cp
 from numpy import format_float_scientific as fs
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -99,16 +100,17 @@ uLB     = 0.04                  # Velocity in lattice units.
 nulb    = uLB*r/Re;             # Viscoscity in lattice units.
 omega = 1 / (3*nulb+0.5);    # Relaxation parameter.
 save_figures = False
-profile = True
 
 ###### Lattice Constants ###############################################
-v = np.array([ [ 1,  1], [ 1,  0], [ 1, -1], [ 0,  1], [ 0,  0],
+v = cp.array([ [ 1,  1], [ 1,  0], [ 1, -1], [ 0,  1], [ 0,  0],
                [ 0, -1], [-1,  1], [-1,  0], [-1, -1] ]) # 9 vecteurs : 9 directions de déplacement
-t = np.array([ 1/36, 1/9, 1/36, 1/9, 4/9, 1/9, 1/36, 1/9, 1/36])
+v_np = cp.asnumpy(v)
+t = cp.array([ 1/36, 1/9, 1/36, 1/9, 4/9, 1/9, 1/36, 1/9, 1/36], dtype=cp.float32)
+t_np = cp.asnumpy(t)
 
-col1 = np.array([0, 1, 2])
-col2 = np.array([3, 4, 5])
-col3 = np.array([6, 7, 8])
+col1 = cp.array([0, 1, 2])
+col2 = cp.array([3, 4, 5])
+col3 = cp.array([6, 7, 8])
 
 # LBM lattice : D2Q9 (numbers are index to v array defined above)
 #
@@ -129,22 +131,23 @@ def macroscopic(fin):
     fluid density is 0th moment of distribution functions 
     fluid velocity components are 1st order moments of dist. functions
     """
-    rho = np.sum(fin, axis=0)
-    u = np.zeros((2, nx, ny))
+    rho = cp.sum(fin, axis=0)
+    u = cp.zeros((2, nx, ny), dtype=cp.float32)
     for i in range(9):
         u[0,:,:] += v[i,0] * fin[i,:,:]
         u[1,:,:] += v[i,1] * fin[i,:,:]
     u /= rho
     return rho, u
 
+
 def equilibrium(rho, u):
     """Equilibrium distribution function.
     """
     usqr = 3/2 * (u[0]**2 + u[1]**2)
-    feq = np.zeros((9,nx,ny))
+    feq = cp.zeros((9,nx,ny), dtype=cp.float32)
     for i in range(9):
         cu = 3 * (v[i,0]*u[0,:,:] + v[i,1]*u[1,:,:])
-        feq[i,:,:] = rho*t[i] * (1 + cu + 0.5*cu**2 - usqr) 
+        feq[i,:,:] = rho*t[i] * (1 + cu + 0.5 * cp.square(cu) - usqr) 
         # feq[i,:,:] : dimension 1 la direction de déplacement de la particule
         #               dimension 2 et 3 : x et y la position
     return feq
@@ -164,14 +167,15 @@ def inivel(d, x, y):
 
 #############################################################
 def main_profile():
-
     # create obstacle mask array from element-wise function
     obstacle = np.fromfunction(obstacle_fun, (nx,ny))
-
+    obstacle = cp.asarray(obstacle)
+    
     # initial velocity field vx,vy from element-wise function
     # vel is also used for inflow border condition
     vel = np.fromfunction(inivel, (2,nx,ny)) 
-
+    vel = cp.asarray(vel)
+    
     # Initialization of the populations at equilibrium 
     # with the given velocity.
     timers.get("equilibrium").start()
@@ -189,7 +193,7 @@ def main_profile():
         
         # Compute macroscopic variables, density and velocity.
         timers.get("macroscopic").start()
-        rho, u = macroscopic(fin)
+        rho, u = macroscopic(fin) # Timer in func
         timers.get("macroscopic").end()
 
         # Left wall: inflow condition.
@@ -201,9 +205,9 @@ def main_profile():
         
         # Compute equilibrium.
         timers.get("equilibrium").start()
-        feq = equilibrium(rho, u)
+        feq = equilibrium(rho, u) # Timer in func
         timers.get("equilibrium").end()
-    
+        
         timers.get("fineq").start()
         fin[[0,1,2],0,:] = feq[[0,1,2],0,:] + fin[[8,7,6],0,:] - feq[[8,7,6],0,:]
         timers.get("fineq").end()
@@ -219,26 +223,25 @@ def main_profile():
         for i in range(9):
             fout[i, obstacle] = fin[8-i, obstacle]
         timers.get("bounceback").end()
-        
-        
+
         # Streaming step.
         timers.get("streaming").start()
         for i in range(9):
-            fin[i,:,:] = np.roll(np.roll(fout[i,:,:], v[i,0], axis=0),
-                                 v[i,1], axis=1 ) # Noyau de calcul 2
+            fin[i,:,:] = cp.roll(cp.roll(fout[i,:,:], v_np[i,0], axis=0),
+                                 v_np[i,1], axis=1 ) # Noyau de calcul 2
         timers.get("streaming").end()
-
-            
+        
             
 def main():
-
     # create obstacle mask array from element-wise function
     obstacle = np.fromfunction(obstacle_fun, (nx,ny))
-
+    obstacle = cp.asarray(obstacle)
+    
     # initial velocity field vx,vy from element-wise function
     # vel is also used for inflow border condition
     vel = np.fromfunction(inivel, (2,nx,ny)) 
-
+    vel = cp.asarray(vel)
+    
     # Initialization of the populations at equilibrium 
     # with the given velocity.
     fin = equilibrium(1, vel) 
@@ -249,9 +252,9 @@ def main():
         # we only need here to specify distrib. function for velocities
         # that enter the domain (other that go out, are set by the streaming step)
         fin[col3,nx-1,:] = fin[col3,nx-2,:] 
-
+        
         # Compute macroscopic variables, density and velocity.
-        rho, u = macroscopic(fin)
+        rho, u = macroscopic(fin) # Timer in func
 
         # Left wall: inflow condition.
         u[:,0,:] = vel[:,0,:]
@@ -259,7 +262,7 @@ def main():
                                       2*np.sum(fin[col3,0,:], axis=0) )
         
         # Compute equilibrium.
-        feq = equilibrium(rho, u)
+        feq = equilibrium(rho, u) # Timer in func
         fin[[0,1,2],0,:] = feq[[0,1,2],0,:] + fin[[8,7,6],0,:] - feq[[8,7,6],0,:]
 
         # Collision step.
@@ -272,15 +275,17 @@ def main():
 
         # Streaming step.
         for i in range(9):
-            fin[i,:,:] = np.roll(np.roll(fout[i,:,:], v[i,0], axis=0),
-                                 v[i,1], axis=1 ) # Noyau de calcul 2
+            fin[i,:,:] = cp.roll(cp.roll(fout[i,:,:], v_np[i,0], axis=0),
+                                 v_np[i,1], axis=1 ) # Noyau de calcul 2
 
         # Visualization of the velocity.
         if ((time%100==0) and save_figures):
+            u_np = cp.asnumpy(u)
             plt.clf()
-            plt.imshow(np.sqrt(u[0]**2+u[1]**2).transpose(), cmap=cm.Reds)
+            plt.imshow(np.sqrt(u_np[0]**2+u_np[1]**2).transpose(), cmap=cm.Reds)
             plt.savefig("figures/vel.{0:04d}.png".format(time//100))
-
+            
+            
 if __name__ == "__main__":
     # execute only if run as a script
     parser = argparse.ArgumentParser(description='Process options')
@@ -302,7 +307,6 @@ if __name__ == "__main__":
         timers.get("main").start()
         main()
         timers.get("main").end()
-    
     total = np.sum(timers.get("main").getMeasures())
     print(f"Total time : {total:4.2f}s")
     
