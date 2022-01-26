@@ -281,9 +281,28 @@ def main():
             plt.imshow(np.sqrt(u[0]**2+u[1]**2).transpose(), cmap=cm.Reds)
             plt.savefig("figures/vel.{0:04d}.png".format(time//100))
 
+
+def parse_all(args):
+    if args.i is not None:
+        global maxIter
+        maxIter = args.i
+    if args.nx is not None:
+        global nx
+        nx = args.nx
+    if args.ny is not None:
+        global ny
+        ny = args.ny
+
+
 if __name__ == "__main__":
     # execute only if run as a script
     parser = argparse.ArgumentParser(description='Process options')
+    parser.add_argument('-i', type=int, const=2000, nargs="?",
+                        help='Number of iterations')
+    parser.add_argument('-nx', type=int, const=420, nargs="?",
+                        help='Size of grid in x')
+    parser.add_argument('-ny', type=int, const=180, nargs="?",
+                        help='Size of grid in y')
     parser.add_argument('--profile', action="store_true",
                         help='Wether or not to use timers')
     parser.add_argument('--savefigs', action="store_true",
@@ -293,6 +312,15 @@ if __name__ == "__main__":
     
     print(f"Launching computation with profile = {args.profile} and savefigs = {args.savefigs}") 
     save_figures = args.savefigs
+    
+    parse_all(args)
+    
+    
+    print("Using following parameters")
+    print(f"    maxIter = {maxIter}")
+    print(f"    nx      = {nx}")
+    print(f"    ny      = {ny}")
+    
     
     if args.profile:
         timers.get("main").start()
