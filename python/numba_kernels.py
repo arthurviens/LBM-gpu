@@ -38,9 +38,10 @@ def macroscopic_cuda(fin, v, rho_out, u_out):
         ux_tmp = 0
         uy_tmp = 0
         for ipop in range(9):
-            rho_tmp += fin[ipop, x, y]
-            ux_tmp += v[ipop, 0] * fin[ipop, x, y]
-            uy_tmp += v[ipop, 1] * fin[ipop, x, y]
+            f_tmp = fin[ipop, x, y]
+            rho_tmp += f_tmp
+            ux_tmp += v[ipop, 0] * f_tmp
+            uy_tmp += v[ipop, 1] * f_tmp
         rho_out[x, y] = rho_tmp
         u_out[0, x, y] = ux_tmp / rho_tmp
         u_out[1, x, y] = uy_tmp / rho_tmp

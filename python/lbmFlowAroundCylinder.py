@@ -22,61 +22,9 @@ import numpy as np
 from numpy import format_float_scientific as fs
 import matplotlib.pyplot as plt
 from matplotlib import cm
-import time
+from Timers import Timer, TimersManager
 import argparse
 
-
-class Timer():
-    def __init__(self, name):
-        self.name = name
-        self.measures = []
-
-    def getName(self):
-        return self.name
-
-    def getMeasures(self):
-        return self.measures
-
-    def start(self):
-        self.start = time.time()
-
-    def end(self):
-        self.end = time.time()
-        self.measures.append(self.end - self.start)
-        del self.start 
-        del self.end
-
-class TimersManager():
-    def __init__(self):
-        self.timers = []
-
-    def add(self, name):
-        self.timers.append(Timer(name))
-
-    def get(self, name):
-        for t in self.timers:
-            if t.getName() == name:
-                return t
-
-    def printInfo(self):
-        main = self.get("main")
-        main_m = np.sum(main.getMeasures())
-        not_computed = main_m
-                
-        for t in self.timers:
-            name = t.getName()
-            measures = t.getMeasures()
-            if name != "main":
-                not_computed -= np.sum(measures)
-            if len(measures) > 0:
-                percent = np.round((np.sum(measures) / main_m)*100, 2)
-                print(f"--> Timer '{name:13}' : N = {len(measures):4} | Mean "\
-                    f"{fs(np.mean(measures), precision=3):9} +- {fs(np.std(measures), precision=3):9} "\
-                    f" | {percent:5}% of total time.")
-            else:
-                print(f"--> Timer '{name:12}' : N = {len(measures):4}")
-        r = np.round((not_computed/main_m)*100, 2)
-        print(f"--> Remaining {fs(np.mean(not_computed), precision=3):9}s not monitored represent {r:5}% of total time")
 
 timers = TimersManager()
 timers.add("main")
@@ -86,7 +34,7 @@ timers.add("streaming")
 timers.add("macroscopic")
 timers.add("rightwall")
 timers.add("leftwall")
-timers.add("fineq")
+timers.add("fin_inflow")
 timers.add("bounceback")
 
 ###### Flow definition #################################################

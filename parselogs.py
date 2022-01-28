@@ -46,4 +46,4 @@ if __name__ == "__main__":
         row = parse_file(directory, algo, f)
         df = df.append(row, ignore_index=True)
     print(df)
-    df.to_csv("perfs.csv", index=False)
+    df.to_csv(f"perfs_{algo}.csv", index=False)
