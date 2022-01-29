@@ -1,5 +1,5 @@
 #!/bin/bash
-
+conda activate numba2021
 # NumBa
 echo "Numba runs for nx"
 for nx in 500 750 1000 1250 1500 1750 2000 2250 2500 2750 3000 3250 3500 3750 4000
@@ -19,6 +19,9 @@ do
 	python python/lbmFlowAroundCylinder-Numba.py -nx 420 -ny 300 -i ${iter} --profile > logs/numba/run_nx420_ny300_i${iter}.log 2>/dev/null
 done
 
+# For bandwidth purposes
+python python/lbmFlowAroundCylinder-Numba.py -nx 5000 -ny 5000 -i 5000 --profile > logs/numba_run_nx5000_ny5000_i5000.log 2>/dev/null
+: '
 # CuPy
 echo "Cupy runs for nx"
 for nx in 500 750 1000 1250 1500 1750 2000 2250 2500 2750 3000 3250 3500 3750 4000
@@ -56,3 +59,4 @@ for iter in 1000 1500 2000 2500 3000 3500 4000 4500 5000
 do
 	python python/lbmFlowAroundCylinder.py -nx 420 -ny 300 -i ${iter} --profile > logs/base/run_nx420_ny300_i${iter}.log 2>/dev/null
 done
+'

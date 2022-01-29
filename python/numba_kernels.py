@@ -11,7 +11,7 @@ omega = 1 / (3*nulb+0.5);    # Relaxation parameter.
 
 
 ##### Right Wall #####
-rig_threadsperblock = 8
+rig_threadsperblock = 16
 rig_blockspergrid_y = math.ceil(ny / rig_threadsperblock)
 rig_blockspergrid = (rig_blockspergrid_y)
 
@@ -25,7 +25,7 @@ def rightwall_cuda(fin):
 
 
 ##### Macroscopic #####
-mac_threadsperblock = (16, 16)
+mac_threadsperblock = (8, 8)
 mac_blockspergrid_x = math.ceil(nx / mac_threadsperblock[0])
 mac_blockspergrid_y = math.ceil(ny / mac_threadsperblock[1])
 mac_blockspergrid = (mac_blockspergrid_x, mac_blockspergrid_y)
@@ -48,7 +48,7 @@ def macroscopic_cuda(fin, v, rho_out, u_out):
 
 
 ##### Left Wall ##### 
-lef_threadsperblock = 8
+lef_threadsperblock = 16
 lef_blockspergrid_y = math.ceil(ny / lef_threadsperblock)
 lef_blockspergrid = (lef_blockspergrid_y)
 
@@ -63,7 +63,7 @@ def leftwall_cuda(fin, vel, u_out, rho_out):
                                         2 * (fin[6, 0, y] + fin[7, 0, y] + fin[8, 0, y]))
 
 ##### Equilibrium #####
-equ_threadsperblock = (16, 16)
+equ_threadsperblock = (8, 8)
 equ_blockspergrid_x = math.ceil(nx / equ_threadsperblock[0])
 equ_blockspergrid_y = math.ceil(ny / equ_threadsperblock[1])
 equ_blockspergrid   = (equ_blockspergrid_x, equ_blockspergrid_y)
@@ -81,7 +81,7 @@ def equilibrium_cuda(rho, u, v, t, feq_out):
 
 
 ##### Fin_Inflow #####
-inf_threadsperblock = 8
+inf_threadsperblock = 16
 inf_blockspergrid_y = math.ceil(ny / inf_threadsperblock)
 inf_blockspergrid = (inf_blockspergrid_y)
 
@@ -95,7 +95,7 @@ def fin_inflow_cuda(feq, fin_out):
 
 
 ##### Collision ##### 
-col_threadsperblock = (16, 16)
+col_threadsperblock = (8, 8)
 col_blockspergrid_x = math.ceil(nx / col_threadsperblock[0])
 col_blockspergrid_y = math.ceil(ny / col_threadsperblock[1])
 col_blockspergrid   = (col_blockspergrid_x, col_blockspergrid_y)
@@ -109,7 +109,7 @@ def collision_cuda(fin, feq, f_out):
 
 
 ##### BounceBack #####
-bou_threadsperblock = (16, 16)
+bou_threadsperblock = (8, 8)
 bou_blockspergrid_x = math.ceil(nx / bou_threadsperblock[0])
 bou_blockspergrid_y = math.ceil(ny / bou_threadsperblock[1])
 bou_blockspergrid   = (bou_blockspergrid_x, bou_blockspergrid_y)
@@ -124,7 +124,7 @@ def bounceback_cuda(fin, obstacle, f_out):
 
 
 ##### Streaming #####
-str_threadsperblock = (16, 16)
+str_threadsperblock = (8, 8)
 str_blockspergrid_x = math.ceil(nx / str_threadsperblock[0])
 str_blockspergrid_y = math.ceil(ny / str_threadsperblock[1])
 str_blockspergrid   = (str_blockspergrid_x, str_blockspergrid_y)

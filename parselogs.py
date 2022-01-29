@@ -1,10 +1,15 @@
 import pandas as pd
 import os
 
-columns = []
+columns = ["equilibrium", "collision", "streaming", "macroscopic", 
+           "rightwall", "leftwall", "fin_inflow", "bounceback"]
 
 def parse_file(directory, algo, file):
-    path = os.path.join(directory, algo, file)
+    print(f"Parsing {file}")
+    if algo in file:
+        path = os.path.join(directory, file)
+    else:
+        path = os.path.join(directory, algo, file)
     with open(path, 'r') as f:
         lines = pd.Series(f.readlines()).str[:-1]
         
@@ -30,13 +35,36 @@ def parse_file(directory, algo, file):
     bounceback = float(lines[lines.str.contains("bounceback")].values[0].split("|")[1].strip().split()[1]) \
                 * int(lines[lines.str.contains("bounceback")].values[0].split("|")[0].split(":")[1].split("=")[1])
     
-    return pd.Series(name=file, 
+    row = pd.Series(name=file, 
               data = [algo, maxiter, nx, ny, main, equilibrium, collision, streaming,
                       macroscopic, rightwall, leftwall, fin_inflow, bounceback],
               index = ["algo", "iter", "nx", "ny", "main", "equilibrium", "collision", "streaming",
                       "macroscopic", "rightwall", "leftwall", "fin_inflow", "bounceback"])
     
-
+    if algo=="numba":
+        row = parse_bdgf(row, lines)
+    
+    return row
+    
+def parse_bdgf(series, lines):
+    #Bandwidth
+    bandwidths = []
+    gflops = []
+    for kernel in columns:
+        bandwidths.append(float(lines[lines.str.contains(kernel)].values[1].split(":")[1].strip().split()[0]))
+        gflops.append(float(lines[lines.str.contains(kernel)].values[2].split(":")[1].strip().split()[0]))
+        
+    new_idx1 = ["bdwdth_" + col for col in columns]
+    new_idx2 = ["gflops_" + col for col in columns]
+    bandwidths.extend(gflops)
+    new_idx1.extend(new_idx2)
+    to_add = pd.Series(data = bandwidths, index=new_idx1)
+    
+    series = series.append(to_add)
+    return series
+    
+    
+    
 if __name__ == "__main__":
     directory = "logs"
     algo = "numba"

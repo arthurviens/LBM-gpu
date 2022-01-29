@@ -34,6 +34,7 @@ from numba_kernels import *
 
 timers = TimersManager()
 timers.add("main")
+timers.add("init")
 timers.add("equilibrium")
 timers.add("collision")
 timers.add("streaming")
@@ -46,7 +47,7 @@ timers.add("bounceback")
 ###### Flow definition #################################################
 maxIter = 2000    # Total number of time iterations.
 Re = 150.0          # Reynolds number.
-nx, ny = 420, 180   # Numer of lattice nodes.
+nx, ny = 4200, 300   # Numer of lattice nodes.
 ly = ny-1           # Height of the domain in lattice units.
 cx, cy, r = nx//4, ny//2, ny//9 # Coordinates of the cylinder.
 uLB     = 0.04                  # Velocity in lattice units.
@@ -121,6 +122,7 @@ def inivel(d, x, y):
 #############################################################
 def main_profile():
     # create obstacle mask array from element-wise function
+    timers.get("init").start()
     obstacle = np.fromfunction(obstacle_fun, (nx,ny))
     obstacle_device = cuda.to_device(obstacle)
     
@@ -145,7 +147,7 @@ def main_profile():
     
     fout = np.zeros_like(fin)
     fout_device = cuda.to_device(fout)
-    
+    timers.get("init").end()
 
     ###### Main time loop ########
     for time in range(maxIter):
@@ -243,7 +245,7 @@ def main():
     
     rho_device = cuda.to_device(np.zeros(shape=(fin_device.shape[1], fin_device.shape[2])))
     
-    u = np.zeros((2, nx, ny), dtype=np.float32)
+    u = np.zeros((2, nx, ny))
     u_device = cuda.to_device(u)
     
     feq_device = cuda.to_device(np.zeros_like(fin_device))
@@ -318,3 +320,5 @@ if __name__ == "__main__":
     
     if args.profile:
         timers.printInfo()
+        timers.printBd(nx, ny, 8)
+        timers.printGflops(nx, ny)
