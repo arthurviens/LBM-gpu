@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 columns = ["equilibrium", "collision", "streaming", "macroscopic", 
-           "rightwall", "leftwall", "fin_inflow", "bounceback"]
+           "rightwall", "leftwall", "fin_inflow", "bounceback", "remains"]
 
 def parse_file(directory, algo, file):
     print(f"Parsing {file}")
@@ -11,7 +11,9 @@ def parse_file(directory, algo, file):
     else:
         path = os.path.join(directory, algo, file)
     with open(path, 'r') as f:
-        lines = pd.Series(f.readlines()).str[:-1]
+        lines = pd.Series(f.readlines())
+        #print(lines)
+        lines = lines.str[:-1]
         
     maxiter = int(lines[lines.str.contains("maxIter")].values[0].split("=")[1].strip())
     nx = int(lines[lines.str.contains("nx")].values[0].split("=")[1].strip())
@@ -34,12 +36,14 @@ def parse_file(directory, algo, file):
                 * int(lines[lines.str.contains("fin_inflow")].values[0].split("|")[0].split(":")[1].split("=")[1])
     bounceback = float(lines[lines.str.contains("bounceback")].values[0].split("|")[1].strip().split()[1]) \
                 * int(lines[lines.str.contains("bounceback")].values[0].split("|")[0].split(":")[1].split("=")[1])
+    remains = float(lines[lines.str.contains("remains")].values[0].split("|")[1].strip().split()[1]) \
+                * int(lines[lines.str.contains("remains")].values[0].split("|")[0].split(":")[1].split("=")[1])
     
     row = pd.Series(name=file, 
               data = [algo, maxiter, nx, ny, main, equilibrium, collision, streaming,
-                      macroscopic, rightwall, leftwall, fin_inflow, bounceback],
+                      macroscopic, rightwall, leftwall, fin_inflow, bounceback, remains],
               index = ["algo", "iter", "nx", "ny", "main", "equilibrium", "collision", "streaming",
-                      "macroscopic", "rightwall", "leftwall", "fin_inflow", "bounceback"])
+                      "macroscopic", "rightwall", "leftwall", "fin_inflow", "bounceback", "remains"])
     
     if algo=="numba":
         row = parse_bdgf(row, lines)
@@ -51,11 +55,12 @@ def parse_bdgf(series, lines):
     bandwidths = []
     gflops = []
     for kernel in columns:
-        bandwidths.append(float(lines[lines.str.contains(kernel)].values[1].split(":")[1].strip().split()[0]))
-        gflops.append(float(lines[lines.str.contains(kernel)].values[2].split(":")[1].strip().split()[0]))
-        
-    new_idx1 = ["bdwdth_" + col for col in columns]
-    new_idx2 = ["gflops_" + col for col in columns]
+        if kernel != "remains":
+            bandwidths.append(float(lines[lines.str.contains(kernel)].values[1].split(":")[1].strip().split()[0]))
+            gflops.append(float(lines[lines.str.contains(kernel)].values[2].split(":")[1].strip().split()[0]))
+
+    new_idx1 = ["bdwdth_" + col for col in columns if col != "remains"]
+    new_idx2 = ["gflops_" + col for col in columns if col != "remains"]
     bandwidths.extend(gflops)
     new_idx1.extend(new_idx2)
     to_add = pd.Series(data = bandwidths, index=new_idx1)
@@ -74,4 +79,4 @@ if __name__ == "__main__":
         row = parse_file(directory, algo, f)
         df = df.append(row, ignore_index=True)
     print(df)
-    df.to_csv(f"perfs_{algo}.csv", index=False)
+    df.to_csv(f"perfs2_{algo}.csv", index=False)

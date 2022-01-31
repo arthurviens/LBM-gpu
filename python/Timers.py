@@ -1,6 +1,7 @@
 import time
 import numpy as np
 from numpy import format_float_scientific as fs
+import numba
 
 
 def generate_memory_table(nx, ny):
@@ -28,7 +29,35 @@ def generate_calc_table(nx, ny):
     calc_table["streaming"] = nx * ny * (3 + 9 * 12)
     return calc_table
     
+class TimerGPU():
+    def __init__(self, name):
+        self.name = name
+        self.measures = []
 
+    def getName(self):
+        return self.name
+
+    def getMeasures(self):
+        return self.measures
+    
+    def getStream(self):
+        return self.stream
+
+    def start(self):
+        self.stream = numba.cuda.stream()
+        self.start_t = numba.cuda.event()
+        self.end_t = numba.cuda.event()
+        self.start_t.record(stream = self.stream)
+
+    def end(self):
+        self.end_t.record(stream = self.stream)
+        self.end_t.wait(stream = self.stream)
+        numba.cuda.synchronize()
+        self.measures.append(self.start_t.elapsed_time(self.end_t) / 1000)
+        del self.start_t
+        del self.end_t
+        del self.stream
+        
 class Timer():
     def __init__(self, name):
         self.name = name
@@ -41,20 +70,25 @@ class Timer():
         return self.measures
 
     def start(self):
-        self.start = time.time()
+        self.start_t = time.time()
 
     def end(self):
-        self.end = time.time()
-        self.measures.append(self.end - self.start)
-        del self.start 
-        del self.end
+        self.end_t = time.time()
+        self.measures.append(self.end_t - self.start_t)
+        del self.start_t
+        del self.end_t
+        
 
 class TimersManager():
-    def __init__(self):
+    def __init__(self, gpu=False):
+        self.gpu = gpu
         self.timers = []
 
     def add(self, name):
-        self.timers.append(Timer(name))
+        if self.gpu:
+            self.timers.append(TimerGPU(name))
+        else:
+            self.timers.append(Timer(name))
 
     def get(self, name):
         for t in self.timers:
@@ -79,7 +113,7 @@ class TimersManager():
             else:
                 print(f"--> Timer '{name:12}' : N = {len(measures):4}")
         r = np.round((not_computed/main_m)*100, 2)
-        print(f"--> Remaining {fs(np.mean(not_computed), precision=3):9}s not monitored represent {r:5}% of total time")
+        print(f"--> Timer 'remains      ' : N =    1 | Mean {fs(np.mean(not_computed), precision=3):9} | {r:5}% of total time")
         
         
     def printBd(self, nx, ny, size):
@@ -92,7 +126,7 @@ class TimersManager():
                     memory_ops = memory_table[name]
                     bytesize = size * memory_ops
                     t = np.mean(measures)
-                    GBs = bytesize * (10 ** (-9)) / t
+                    GBs = (bytesize * (1e-9)) / t
                     print(f"mem bandwidth {name:13} : {np.round(GBs, 3)} GB/s")
                 except KeyError:
                     pass

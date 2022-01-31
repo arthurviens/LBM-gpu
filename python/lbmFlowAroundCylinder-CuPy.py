@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import time
 import argparse
-from Timers import Timer, TimersManager
+from Timers import Timer, TimerGPU, TimersManager
 
 
 timers = TimersManager()
