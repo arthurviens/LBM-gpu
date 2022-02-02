@@ -36,8 +36,11 @@ def parse_file(directory, algo, file):
                 * int(lines[lines.str.contains("fin_inflow")].values[0].split("|")[0].split(":")[1].split("=")[1])
     bounceback = float(lines[lines.str.contains("bounceback")].values[0].split("|")[1].strip().split()[1]) \
                 * int(lines[lines.str.contains("bounceback")].values[0].split("|")[0].split(":")[1].split("=")[1])
-    remains = float(lines[lines.str.contains("remains")].values[0].split("|")[1].strip().split()[1]) \
+    try:
+        remains = float(lines[lines.str.contains("remains")].values[0].split("|")[1].strip().split()[1]) \
                 * int(lines[lines.str.contains("remains")].values[0].split("|")[0].split(":")[1].split("=")[1])
+    except Exception:
+        remains = 0
     
     row = pd.Series(name=file, 
               data = [algo, maxiter, nx, ny, main, equilibrium, collision, streaming,
@@ -79,4 +82,4 @@ if __name__ == "__main__":
         row = parse_file(directory, algo, f)
         df = df.append(row, ignore_index=True)
     print(df)
-    df.to_csv(f"perfs2_{algo}.csv", index=False)
+    df.to_csv(f"perfs_{algo}.csv", index=False)
